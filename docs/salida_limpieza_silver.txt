@@ -1,0 +1,73 @@
+(venv) PS C:\Users\Chaqu\OneDrive\Escritorio\Dashboard BI> python .\capa_silver.py
+--- Extrayendo datos de SQL Server: LAPTOP-0FE1UK8O/LogisticaUltimaMilla.Entregas_Bronze ---
+C:\Users\Chaqu\OneDrive\Escritorio\Dashboard BI\capa_silver.py:17: UserWarning: pandas only supports SQLAlchemy connectable (engine/connection) or database string URI or sqlite3 DBAPI2 connection. Other DBAPI2 objects are not tested. Please consider using SQLAlchemy.
+  df = pd.read_sql(query, cnxn)
+Datos extraídos de SQL Server (Muestra):
+   ID_Entrega          Fecha_Hora  ID_Vehiculo  ...  Tiempo_Idling_Minutos  Emisiones_CO2_KG  Estado_Entrega
+0           1 2023-12-02 11:20:00            3  ...                    8.0             45.99       Entregado
+1           2 2024-09-03 13:52:00            2  ...                   20.0             44.06       Entregado
+2           3 2023-08-21 23:40:00            4  ...                   26.0             21.39      En Proceso
+3           4 2024-11-21 23:00:00            3  ...                   16.0            137.54       Entregado
+4           5 2023-04-21 03:14:00            3  ...                   31.0            129.93      En Proceso
+
+[5 rows x 13 columns]
+
+--- Extrayendo datos de CEPALSTAT API ---
+Datos extraídos de CEPALSTAT (Bolivia - Sector Energía):
+      Anio  Emisiones_MtCO2e
+169   2022             25.67
+961   2022             18.48
+994   2022              7.79
+98    2022              2.69
+1154  2022          38373.71
+
+--- Limpiando y transformando datos de Entregas_Bronze ---
+[INFO] Inicio de limpieza
+[INFO] Registros de entrada: 5000
+[INFO] Columnas disponibles: ['ID_Entrega', 'Fecha_Hora', 'ID_Vehiculo', 'ID_Conductor', 'ID_Cliente', 'ID_Origen', 'ID_Destino', 'Distancia_KM', 'Consumo_Combustible_Litros', 'Peso_Carga_KG', 'Tiempo_Idling_Minutos', 'Emisiones_CO2_KG', 'Estado_Entrega']
+
+[ETAPA 1/4] Tratamiento de nulos en Tiempo_Idling_Minutos
+[ANTES] Nulos en Tiempo_Idling_Minutos: 237
+[DESPUES] Nulos en Tiempo_Idling_Minutos: 0
+[METRICA] Detectados: 237 | Arreglados: 237 | Pendientes: 0
+
+[ETAPA 2/4] Normalización de Estado_Entrega
+[ANTES] Nulos en Estado_Entrega: 0
+[ANTES] Valores únicos en Estado_Entrega: <StringArray>
+[     'Entregado',     'En Proceso',      'Cancelado',      'entregado',
+  '  Entregado  ',      'cancelado',  '  Cancelado  ', '  En Proceso  ',
+     'en proceso']
+Length: 9, dtype: str
+[DESPUES] Nulos en Estado_Entrega: 0
+[METRICA] Detectados: 0 | Arreglados: 0 | Pendientes: 0
+Valores únicos en Estado_Entrega después de limpieza: <StringArray>
+['Entregado', 'En Proceso', 'Cancelado']
+Length: 3, dtype: str
+
+[ETAPA 3/4] Conversión de Fecha_Hora a datetime
+[ANTES] Tipo de Fecha_Hora: datetime64[us]
+[ANTES] Nulos en Fecha_Hora: 0
+[DESPUES] Tipo de Fecha_Hora: datetime64[us]
+[DESPUES] Nulos en Fecha_Hora: 0
+[METRICA] Detectados: 0 | Arreglados: 0 | Pendientes: 0
+
+[OK] Todas las validaciones pasaron correctamente
+Limpieza y transformación completadas exitosamente.
+Datos limpios de Entregas (Muestra):
+   ID_Entrega          Fecha_Hora  ID_Vehiculo  ...  Tiempo_Idling_Minutos  Emisiones_CO2_KG  Estado_Entrega
+0           1 2023-12-02 11:20:00            3  ...                      8             45.99       Entregado
+1           2 2024-09-03 13:52:00            2  ...                     20             44.06       Entregado
+2           3 2023-08-21 23:40:00            4  ...                     26             21.39      En Proceso
+3           4 2024-11-21 23:00:00            3  ...                     16            137.54       Entregado
+4           5 2023-04-21 03:14:00            3  ...                     31            129.93      En Proceso
+
+[5 rows x 13 columns]
+[RESUMEN] Registros finales: 5000
+[RESUMEN CALIDAD] Problemas detectados: 237
+[RESUMEN CALIDAD] Problemas arreglados: 237
+[RESUMEN CALIDAD] Problemas pendientes: 0
+
+Datos de entregas limpios guardados en 'silver_entregas.csv'
+Datos de CEPALSTAT guardados en 'silver_cepalstat.csv'
+
+Capa Silver completada: Archivos 'silver_entregas.csv' y 'silver_cepalstat.csv' generados.
