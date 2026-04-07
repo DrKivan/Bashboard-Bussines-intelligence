@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Tuple
 from urllib import error as urllib_error
-from urllib.parse import quote_plus
 from urllib import request as urllib_request
 
 import pandas as pd
@@ -43,11 +42,10 @@ def load_local_env() -> None:
 
 load_local_env()
 
-DB_NAME = os.getenv("DB_NAME", "LogisticaUltimaMilla")
-DB_USER = os.getenv("DB_USER", "sa")
-DB_PASS = os.getenv("DB_PASS", "Tachyon7188346")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "1433")
+# Conexion SQL Server igual a capa_silver.py (Windows Auth, sin .env para DB)
+DB_SERVER = "LAPTOP-0FE1UK8O"
+DB_NAME = "LogisticaUltimaMilla"
+ODBC_DRIVER = "ODBC Driver 17 for SQL Server"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = os.getenv(
     "OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"
@@ -104,24 +102,26 @@ def build_dashboard_filters(
     end_date: str | None,
     route: str | None,
     status: str | None,
+    table_alias: str | None = None,
 ) -> Tuple[str, Dict[str, Any]]:
     clauses: List[str] = []
     params: Dict[str, Any] = {}
+    prefix = f"{table_alias}." if table_alias else ""
 
     if start_date:
-        clauses.append("Fecha >= :start_date")
+        clauses.append(f"{prefix}Fecha >= :start_date")
         params["start_date"] = start_date
 
     if end_date:
-        clauses.append("Fecha <= :end_date")
+        clauses.append(f"{prefix}Fecha <= :end_date")
         params["end_date"] = end_date
 
     if route:
-        clauses.append("Ruta = :route")
+        clauses.append(f"{prefix}Ruta = :route")
         params["route"] = route
 
     if status:
-        clauses.append("EstadoEntrega = :status")
+        clauses.append(f"{prefix}EstadoEntrega = :status")
         params["status"] = status
 
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
@@ -129,47 +129,13 @@ def build_dashboard_filters(
 
 
 def get_engine():
-    driver_preference = os.getenv("DB_DRIVER", "auto").lower()
-
-    if driver_preference in {"auto", "pymssql"}:
-        try:
-            import pymssql  # noqa: F401
-
-            return create_engine(
-                f"mssql+pymssql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-            )
-        except ModuleNotFoundError:
-            if driver_preference == "pymssql":
-                raise RuntimeError(
-                    "DB_DRIVER=pymssql pero el modulo pymssql no esta instalado"
-                )
-
-    if driver_preference in {"auto", "pyodbc"}:
-        try:
-            import pyodbc  # noqa: F401
-
-            odbc_driver = os.getenv("ODBC_DRIVER", "ODBC Driver 18 for SQL Server")
-            odbc_connect = (
-                f"DRIVER={{{odbc_driver}}};"
-                f"SERVER={DB_HOST},{DB_PORT};"
-                f"DATABASE={DB_NAME};"
-                f"UID={DB_USER};"
-                f"PWD={DB_PASS};"
-                "TrustServerCertificate=yes;"
-                "Encrypt=no"
-            )
-            return create_engine(
-                f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc_connect)}"
-            )
-        except ModuleNotFoundError:
-            if driver_preference == "pyodbc":
-                raise RuntimeError(
-                    "DB_DRIVER=pyodbc pero el modulo pyodbc no esta instalado"
-                )
-
-    raise RuntimeError(
-        "No hay driver SQL Server disponible. Instala pymssql o pyodbc y ajusta DB_DRIVER."
+    conn_str = (
+        f"mssql+pyodbc://{DB_SERVER}/{DB_NAME}"
+        f"?driver={ODBC_DRIVER.replace(' ', '+')}"
+        "&trusted_connection=yes"
+        "&TrustServerCertificate=yes"
     )
+    return create_engine(conn_str, fast_executemany=True)
 
 
 def rows_to_json(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -460,7 +426,7 @@ def kpis(
     try:
         engine = get_engine()
         where_clause, filter_params = build_dashboard_filters(
-            start_date, end_date, route, status
+            start_date, end_date, route, status, table_alias="vg"
         )
         sql = text(
             f"""
@@ -681,7 +647,9 @@ def filter_options(
         return {
             "routes": [str(row["Ruta"]) for _, row in routes_df.iterrows()],
             "statuses": [
-                str(row["EstadoEntrega"]) for _, row in status_df.iterrows()
+                str(row["EstadoEntrega"])
+                for _, row in status_df.iterrows()
+                if str(row["EstadoEntrega"]).strip().lower() != "pendiente"
             ],
             "min_date": min_date,
             "max_date": max_date,

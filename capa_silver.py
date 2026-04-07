@@ -25,8 +25,8 @@ warnings.filterwarnings("ignore")
 # CONFIGURACION - Ajustar segun laboratorio
 # ─────────────────────────────────────────────────────────────
 #
-"""
-SERVIDOR = "localhost"  # Cambiar al nombre de tu instancia
+
+SERVIDOR = "LAPTOP-0FE1UK8O"  # Cambiar al nombre de tu instancia
 DB_BRONZE = "LogisticaUltimaMilla"
 DB_GOLD = "LogisticaUltimaMilla"  # Mismo servidor, tablas Silver cargadas ahi
 CEPAL_CSV = "silver_cepalstat.csv"  # Archivo con datos CEPALSTAT de Bolivia
@@ -39,31 +39,13 @@ def get_engine(database: str):
     # Construye engine SQLAlchemy para SQL Server con autenticacion Windows.
     conn_str = (
         f"mssql+pyodbc://{SERVIDOR}/{database}"
-        "?driver=ODBC+Driver+18+for+SQL+Server"
+        "?driver=ODBC+Driver+17+for+SQL+Server"
         "&trusted_connection=yes"
         "&TrustServerCertificate=yes"
     )
     return create_engine(conn_str, fast_executemany=True)
-"""
-
-from sqlalchemy import create_engine
-
-# ─────────────────────────────────────────────────────────────
-# CONFIGURACION - SQL Server Docker en CachyOS
-# ─────────────────────────────────────────────────────────────
-SERVIDOR = "localhost"
-PUERTO = "1433"
-USUARIO = "sa"
-PASSWORD = "Tachyon7188346"
-DB_BRONZE = "LogisticaUltimaMilla"
-DB_GOLD = "LogisticaUltimaMilla"
-CEPAL_CSV = "silver_cepalstat.csv"  # Archivo con datos CEPALSTAT de Bolivia
 
 
-def get_engine(database: str):
-    return create_engine(
-        f"mssql+pymssql://sa:Tachyon7188346@localhost:1433/{database}",
-    )
 
 
 # Uso

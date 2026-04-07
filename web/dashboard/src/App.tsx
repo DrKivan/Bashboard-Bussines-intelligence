@@ -691,12 +691,12 @@ function App() {
 
   return (
     <main
-      className={`m-5 min-h-screen transition-[padding-right] duration-300 ease-out ${
+      className={`m-4 rounded-[28px] border border-emerald-900/10 bg-card/90 p-3 shadow-[0_24px_80px_-40px_rgba(0,56,28,0.45)] transition-[padding-right] duration-300 ease-out md:m-6 md:p-4 ${
         assistantOpen ? "lg:pr-[25rem]" : ""
       }`}
     >
       <div className="flex w-full flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-3xl border border-border/80 bg-card/95 p-6 shadow-lg ring-1 ring-foreground/5 animate-rise md:p-8">
+        <section className="animate-rise flex flex-col gap-4 rounded-3xl border border-border/70 bg-card p-6 shadow-sm ring-1 ring-foreground/5 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Badge variant="outline">Panel Ejecutivo</Badge>
             <Badge variant="secondary">API: {API_BASE_URL}</Badge>
@@ -712,25 +712,25 @@ function App() {
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="xl:sticky xl:top-6 xl:h-fit">
-            <Card className="animate-rise">
+            <Card className="animate-rise border-emerald-950/70 bg-[linear-gradient(180deg,rgba(3,36,19,0.98),rgba(4,24,14,0.98))] text-emerald-50 shadow-xl">
               <CardHeader>
-                <CardTitle>Filtros del Dashboard</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-emerald-50">Filtros del Dashboard</CardTitle>
+                <CardDescription className="text-emerald-100/75">
                   Define el alcance del analisis antes de interpretar los
                   indicadores.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                <div className="rounded-2xl border border-emerald-200/20 bg-emerald-50/10 p-3 text-xs text-emerald-100/80">
                   Paso recomendado: 1) Fecha, 2) Ruta/Estado, 3) Analiza KPIs y
                   graficos.
                 </div>
 
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="start-date" className="text-sm text-muted-foreground">
+                    <label htmlFor="start-date" className="text-sm text-emerald-100/85">
                       Fecha desde
                     </label>
                     <input
@@ -745,12 +745,13 @@ function App() {
                           startDate: event.target.value,
                         }))
                       }
-                      className="h-9 rounded-3xl border border-input bg-background px-3 text-sm"
+                      className="h-9 rounded-2xl border border-emerald-200/30 bg-emerald-950/45 px-3 text-sm text-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+                      style={{ colorScheme: "dark" }}
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="end-date" className="text-sm text-muted-foreground">
+                    <label htmlFor="end-date" className="text-sm text-emerald-100/85">
                       Fecha hasta
                     </label>
                     <input
@@ -765,12 +766,13 @@ function App() {
                           endDate: event.target.value,
                         }))
                       }
-                      className="h-9 rounded-3xl border border-input bg-background px-3 text-sm"
+                      className="h-9 rounded-2xl border border-emerald-200/30 bg-emerald-950/45 px-3 text-sm text-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+                      style={{ colorScheme: "dark" }}
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="route" className="text-sm text-muted-foreground">
+                    <label htmlFor="route" className="text-sm text-emerald-100/85">
                       Ruta
                     </label>
                     <select
@@ -783,11 +785,18 @@ function App() {
                         }))
                       }
                       disabled={loadingOptions}
-                      className="h-9 rounded-3xl border border-input bg-background px-3 text-sm"
+                      className="h-9 rounded-2xl border border-emerald-200/30 bg-emerald-950/45 px-3 text-sm text-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+                      style={{ colorScheme: "dark" }}
                     >
-                      <option value="">Todas las rutas</option>
+                      <option value="" className="bg-emerald-950 text-emerald-50">
+                        Todas las rutas
+                      </option>
                       {filterOptions.routes.map((routeOption) => (
-                        <option key={routeOption} value={routeOption}>
+                        <option
+                          key={routeOption}
+                          value={routeOption}
+                          className="bg-emerald-950 text-emerald-50"
+                        >
                           {routeOption}
                         </option>
                       ))}
@@ -795,7 +804,7 @@ function App() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="status" className="text-sm text-muted-foreground">
+                    <label htmlFor="status" className="text-sm text-emerald-100/85">
                       Estado
                     </label>
                     <select
@@ -808,11 +817,18 @@ function App() {
                         }))
                       }
                       disabled={loadingOptions}
-                      className="h-9 rounded-3xl border border-input bg-background px-3 text-sm"
+                      className="h-9 rounded-2xl border border-emerald-200/30 bg-emerald-950/45 px-3 text-sm text-emerald-50 focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+                      style={{ colorScheme: "dark" }}
                     >
-                      <option value="">Todos los estados</option>
+                      <option value="" className="bg-emerald-950 text-emerald-50">
+                        Todos los estados
+                      </option>
                       {filterOptions.statuses.map((statusOption) => (
-                        <option key={statusOption} value={statusOption}>
+                        <option
+                          key={statusOption}
+                          value={statusOption}
+                          className="bg-emerald-950 text-emerald-50"
+                        >
                           {statusOption}
                         </option>
                       ))}
@@ -825,6 +841,7 @@ function App() {
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="border-emerald-200/35 bg-emerald-50/10 text-emerald-50 hover:bg-emerald-50/20 hover:text-emerald-50"
                     onClick={() => {
                       setFilters(DEFAULT_FILTERS)
                       setError(null)
@@ -839,16 +856,24 @@ function App() {
                     Limpiar filtros
                   </Button>
                   {filters.startDate ? (
-                    <Badge variant="secondary">Desde: {filters.startDate}</Badge>
+                    <Badge variant="secondary" className="border-emerald-200/25 bg-emerald-100/15 text-emerald-50">
+                      Desde: {filters.startDate}
+                    </Badge>
                   ) : null}
                   {filters.endDate ? (
-                    <Badge variant="secondary">Hasta: {filters.endDate}</Badge>
+                    <Badge variant="secondary" className="border-emerald-200/25 bg-emerald-100/15 text-emerald-50">
+                      Hasta: {filters.endDate}
+                    </Badge>
                   ) : null}
                   {filters.route ? (
-                    <Badge variant="secondary">Ruta: {filters.route}</Badge>
+                    <Badge variant="secondary" className="border-emerald-200/25 bg-emerald-100/15 text-emerald-50">
+                      Ruta: {filters.route}
+                    </Badge>
                   ) : null}
                   {filters.status ? (
-                    <Badge variant="secondary">Estado: {filters.status}</Badge>
+                    <Badge variant="secondary" className="border-emerald-200/25 bg-emerald-100/15 text-emerald-50">
+                      Estado: {filters.status}
+                    </Badge>
                   ) : null}
                 </div>
               </CardContent>
@@ -866,14 +891,16 @@ function App() {
               </Alert>
             ) : null}
 
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 p-4">
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border/70 bg-[linear-gradient(90deg,rgba(7,70,37,0.96),rgba(27,135,76,0.94))] p-4 text-emerald-50">
               <div className="space-y-1">
                 <h2 className="font-heading text-xl md:text-2xl">KPIs estrategicos (6)</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-emerald-100/80">
                   Indicadores clave definidos en el documento del proyecto.
                 </p>
               </div>
-              <Badge variant="outline">{activeFiltersCount} filtros activos</Badge>
+              <Badge variant="secondary" className="border-emerald-100/20 bg-emerald-100/10 text-emerald-50">
+                {activeFiltersCount} filtros activos
+              </Badge>
             </section>
 
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -1100,19 +1127,21 @@ function App() {
       ) : null}
 
       <aside
-        className={`fixed top-4 right-4 bottom-22 z-40 w-[min(100vw-2rem,400px)] transition-transform duration-300 ease-out lg:bottom-4 ${
+        className={`fixed top-4 right-4 bottom-22 z-40 max-h-[calc(100dvh-6.5rem)] w-[min(100vw-2rem,400px)] transition-transform duration-300 ease-out lg:bottom-4 lg:max-h-[calc(100dvh-2rem)] ${
           assistantOpen ? "translate-x-0" : "translate-x-[110%]"
         }`}
       >
         <Card className="flex h-full flex-col border-primary/20 shadow-2xl">
-          <CardHeader className="gap-3 border-b border-border/60">
+          <CardHeader className="gap-1.5 border-b border-border/60 pb-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Bot className="size-5 text-primary" />
                 <CardTitle>Asistente IA de Decisiones</CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline">Modelo: {assistantModel}</Badge>
+                <Badge variant="outline" className="h-6 px-2 text-[10px] font-normal text-muted-foreground">
+                  Modelo: {assistantModel}
+                </Badge>
                 <Button
                   type="button"
                   variant="ghost"
@@ -1124,63 +1153,9 @@ function App() {
                 </Button>
               </div>
             </div>
-            <CardDescription>
-              Asesor ejecutivo para detectar riesgos y recomendar acciones
-              proactivas sin perder contexto de filtros y KPIs.
-            </CardDescription>
-
-            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/20 px-3 py-2">
-              <div className="text-xs text-muted-foreground">
-                Proveedor IA
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs ${
-                    assistantProvider === "openrouter"
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  Open model
-                </span>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={assistantProvider === "gemini"}
-                  onClick={() => {
-                    setAssistantProvider((currentProvider) =>
-                      currentProvider === "openrouter" ? "gemini" : "openrouter",
-                    )
-                    setAssistantError(null)
-                  }}
-                  className={`relative h-6 w-11 rounded-full transition-colors ${
-                    assistantProvider === "gemini" ? "bg-primary" : "bg-muted"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
-                      assistantProvider === "gemini"
-                        ? "translate-x-5"
-                        : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
-
-                <span
-                  className={`text-xs ${
-                    assistantProvider === "gemini"
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  Gemini
-                </span>
-              </div>
-            </div>
           </CardHeader>
 
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-2.5 p-3.5">
             {assistantError ? (
               <Alert variant="destructive">
                 <AlertTriangle />
@@ -1188,37 +1163,6 @@ function App() {
                 <AlertDescription>{assistantError}</AlertDescription>
               </Alert>
             ) : null}
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                disabled={assistantLoading}
-                onClick={() => {
-                  void askDecisionAssistant(
-                    "Genera una alerta ejecutiva: que esta en riesgo hoy y que hacer en las proximas 48 horas.",
-                  )
-                }}
-              >
-                <Sparkles className="mr-2 size-4" />
-                Recomendacion proactiva
-              </Button>
-
-              {assistantQuickActions.map((quickPrompt) => (
-                <Button
-                  key={quickPrompt}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={assistantLoading}
-                  onClick={() => {
-                    void askDecisionAssistant(quickPrompt)
-                  }}
-                >
-                  {quickPrompt}
-                </Button>
-              ))}
-            </div>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-border/70 bg-muted/20 p-3">
               {assistantMessages.map((message, index) => (
@@ -1259,15 +1203,102 @@ function App() {
               ) : null}
             </div>
 
+            <details className="rounded-lg border border-border/70 bg-muted/10 p-2">
+              <summary className="cursor-pointer select-none text-[11px] font-medium text-muted-foreground">
+                Opciones del asistente
+              </summary>
+
+              <div className="mt-2 flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-2 py-1.5">
+                <div className="text-[11px] text-muted-foreground">Proveedor IA</div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[11px] ${
+                      assistantProvider === "openrouter"
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Open model
+                  </span>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={assistantProvider === "gemini"}
+                    onClick={() => {
+                      setAssistantProvider((currentProvider) =>
+                        currentProvider === "openrouter" ? "gemini" : "openrouter",
+                      )
+                      setAssistantError(null)
+                    }}
+                    className={`relative h-5 w-10 rounded-full transition-colors ${
+                      assistantProvider === "gemini" ? "bg-primary" : "bg-muted"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform ${
+                        assistantProvider === "gemini"
+                          ? "translate-x-5"
+                          : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+
+                  <span
+                    className={`text-[11px] ${
+                      assistantProvider === "gemini"
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Gemini
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 shrink-0 px-2 text-[11px]"
+                  disabled={assistantLoading}
+                  onClick={() => {
+                    void askDecisionAssistant(
+                      "Genera una alerta ejecutiva: que esta en riesgo hoy y que hacer en las proximas 48 horas.",
+                    )
+                  }}
+                >
+                  <Sparkles className="mr-1.5 size-3.5" />
+                  Recomendacion proactiva
+                </Button>
+
+                {assistantQuickActions.map((quickPrompt) => (
+                  <Button
+                    key={quickPrompt}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 px-2 text-[11px]"
+                    disabled={assistantLoading}
+                    onClick={() => {
+                      void askDecisionAssistant(quickPrompt)
+                    }}
+                  >
+                    {quickPrompt}
+                  </Button>
+                ))}
+              </div>
+            </details>
+
             <form onSubmit={handleAssistantSubmit} className="space-y-2">
-              <label htmlFor="assistant-input" className="text-sm font-medium">
+              <label htmlFor="assistant-input" className="text-xs font-medium text-muted-foreground">
                 Consulta al asistente
               </label>
               <textarea
                 id="assistant-input"
                 value={assistantInput}
                 onChange={(event) => setAssistantInput(event.target.value)}
-                rows={3}
+                rows={2}
                 placeholder="Ejemplo: Segun los filtros actuales, donde debo actuar primero y que impacto espero en OTIF y CO2?"
                 className="w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm"
               />
