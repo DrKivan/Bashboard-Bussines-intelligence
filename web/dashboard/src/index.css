@@ -1,0 +1,218 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/sora";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: "Sora Variable", sans-serif;
+  --font-sans: "Sora Variable", sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(0.97 0.006 250);
+  --foreground: oklch(0.25 0.03 252);
+  --card: oklch(0.992 0.002 255);
+  --card-foreground: oklch(0.25 0.03 252);
+  --popover: oklch(0.995 0.002 255);
+  --popover-foreground: oklch(0.25 0.03 252);
+  --primary: oklch(0.45 0.11 254);
+  --primary-foreground: oklch(0.98 0.003 255);
+  --secondary: oklch(0.93 0.01 250);
+  --secondary-foreground: oklch(0.3 0.03 252);
+  --muted: oklch(0.94 0.008 250);
+  --muted-foreground: oklch(0.5 0.03 252);
+  --accent: oklch(0.9 0.02 240);
+  --accent-foreground: oklch(0.28 0.03 252);
+  --destructive: oklch(0.57 0.2 26);
+  --border: oklch(0.87 0.012 250);
+  --input: oklch(0.87 0.012 250);
+  --ring: oklch(0.56 0.09 254);
+  --chart-1: oklch(0.55 0.12 255);
+  --chart-2: oklch(0.62 0.1 210);
+  --chart-3: oklch(0.68 0.11 150);
+  --chart-4: oklch(0.62 0.13 30);
+  --chart-5: oklch(0.55 0.1 320);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.98 0.005 250);
+  --sidebar-foreground: oklch(0.25 0.03 252);
+  --sidebar-primary: oklch(0.45 0.11 254);
+  --sidebar-primary-foreground: oklch(0.98 0.003 255);
+  --sidebar-accent: oklch(0.9 0.02 240);
+  --sidebar-accent-foreground: oklch(0.28 0.03 252);
+  --sidebar-border: oklch(0.87 0.012 250);
+  --sidebar-ring: oklch(0.56 0.09 254);
+}
+
+.dark {
+  --background: oklch(0.22 0.02 255);
+  --foreground: oklch(0.95 0.006 255);
+  --card: oklch(0.27 0.02 255);
+  --card-foreground: oklch(0.95 0.006 255);
+  --popover: oklch(0.24 0.02 255);
+  --popover-foreground: oklch(0.95 0.006 255);
+  --primary: oklch(0.7 0.11 254);
+  --primary-foreground: oklch(0.2 0.02 255);
+  --secondary: oklch(0.34 0.02 255);
+  --secondary-foreground: oklch(0.95 0.006 255);
+  --muted: oklch(0.33 0.02 255);
+  --muted-foreground: oklch(0.77 0.015 255);
+  --accent: oklch(0.39 0.03 240);
+  --accent-foreground: oklch(0.95 0.006 255);
+  --destructive: oklch(0.69 0.16 26);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.1 254);
+  --chart-1: oklch(0.73 0.12 254);
+  --chart-2: oklch(0.74 0.11 210);
+  --chart-3: oklch(0.76 0.1 150);
+  --chart-4: oklch(0.74 0.12 30);
+  --chart-5: oklch(0.72 0.1 320);
+  --sidebar: oklch(0.24 0.02 255);
+  --sidebar-foreground: oklch(0.95 0.006 255);
+  --sidebar-primary: oklch(0.7 0.11 254);
+  --sidebar-primary-foreground: oklch(0.2 0.02 255);
+  --sidebar-accent: oklch(0.39 0.03 240);
+  --sidebar-accent-foreground: oklch(0.95 0.006 255);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.72 0.1 254);
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float-slow {
+    0% {
+        transform: translate3d(0, 0, 0);
+    }
+    50% {
+        transform: translate3d(12px, -14px, 0);
+    }
+    100% {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply text-foreground;
+    background:
+      linear-gradient(165deg, color-mix(in oklab, var(--background) 92%, white), var(--background)),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 31px,
+        color-mix(in oklab, var(--border) 42%, transparent) 32px
+      );
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+@layer utilities {
+  .animate-rise {
+    animation: rise-in 500ms ease-out both;
+  }
+
+  .animate-float-slow {
+    animation: float-slow 9s ease-in-out infinite;
+  }
+
+  .assistant-markdown {
+    @apply space-y-2 leading-relaxed;
+  }
+
+  .assistant-markdown p {
+    @apply whitespace-pre-wrap;
+  }
+
+  .assistant-markdown strong {
+    @apply font-semibold;
+  }
+
+  .assistant-markdown em {
+    @apply italic;
+  }
+
+  .assistant-markdown ul,
+  .assistant-markdown ol {
+    @apply ml-5 space-y-1;
+  }
+
+  .assistant-markdown ul {
+    list-style-type: disc;
+  }
+
+  .assistant-markdown ol {
+    list-style-type: decimal;
+  }
+
+  .assistant-markdown h1,
+  .assistant-markdown h2,
+  .assistant-markdown h3 {
+    @apply mt-3 text-base font-semibold;
+  }
+
+  .assistant-markdown code {
+    @apply rounded bg-muted px-1 py-0.5 text-[0.85em];
+  }
+
+  .assistant-markdown pre {
+    @apply overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-3;
+  }
+
+  .assistant-markdown pre code {
+    @apply bg-transparent p-0;
+  }
+}

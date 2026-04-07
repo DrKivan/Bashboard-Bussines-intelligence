@@ -1,192 +1,468 @@
+# =============================================================
+#  CAPA SILVER - Logistica de Ultima Milla en Bolivia
+#  Materia: Inteligencia de Negocios | UPDS - Grupo Familia Mallku
+#  Actividad 8: Sprint de Refinamiento
+#
+#  Proceso:
+#    1. Extrae datos "sucios" de la Capa Bronze (SQL Server)
+#    2. Integra indicadores externos de CEPALSTAT (CSV)
+#    3. Limpia, normaliza y valida (0 nulos en columnas criticas)
+#    4. Carga el resultado limpio al Data Warehouse (SQL Server)
+#
+#  Ejecutar: python capa_silver.py
+#  Requisitos: pip install pandas sqlalchemy pyodbc
+# =============================================================
+
+import warnings
+
+import numpy as np
 import pandas as pd
-import requests
-import json
-import pyodbc
+from sqlalchemy import create_engine, text
 
-def extract_from_sql_server(server_name, database_name, table_name):
-    print(f"--- Extrayendo datos de SQL Server: {server_name}/{database_name}.{table_name} ---")
+warnings.filterwarnings("ignore")
+
+# ─────────────────────────────────────────────────────────────
+# CONFIGURACION - Ajustar segun laboratorio
+# ─────────────────────────────────────────────────────────────
+#
+"""
+SERVIDOR = "localhost"  # Cambiar al nombre de tu instancia
+DB_BRONZE = "LogisticaUltimaMilla"
+DB_GOLD = "LogisticaUltimaMilla"  # Mismo servidor, tablas Silver cargadas ahi
+CEPAL_CSV = "silver_cepalstat.csv"  # Archivo con datos CEPALSTAT de Bolivia
+
+
+# ─────────────────────────────────────────────────────────────
+# PASO 0: Conexion a la Capa Bronze
+# ─────────────────────────────────────────────────────────────
+def get_engine(database: str):
+    # Construye engine SQLAlchemy para SQL Server con autenticacion Windows.
     conn_str = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-        f"SERVER={server_name};"
-        f"DATABASE={database_name};"
-        f"TRUSTED_CONNECTION=yes;"
+        f"mssql+pyodbc://{SERVIDOR}/{database}"
+        "?driver=ODBC+Driver+18+for+SQL+Server"
+        "&trusted_connection=yes"
+        "&TrustServerCertificate=yes"
     )
-    try:
-        cnxn = pyodbc.connect(conn_str)
-        query = f"SELECT * FROM {table_name}"
-        df = pd.read_sql(query, cnxn)
-        cnxn.close()
-        print("Datos extraídos de SQL Server (Muestra):")
-        print(df.head())
-        return df
-    except pyodbc.Error as ex:
-        sqlstate = ex.args[0]
-        print(f"Error al conectar o extraer de SQL Server: {sqlstate}")
-        print("Asegúrate de tener el 'ODBC Driver 17 for SQL Server' instalado y que el servidor esté accesible.")
-        return None
+    return create_engine(conn_str, fast_executemany=True)
+"""
 
-def extract_from_cepalstat():
-    print("\n--- Extrayendo datos de CEPALSTAT API ---")
-    indicator_id = 3351  # Emisiones de GEI por sector
-    area_id = 221       # Bolivia
-    sector_id = 63374   # Energía (incluye Transporte)
+from sqlalchemy import create_engine
 
-    url = f"https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/{indicator_id}/records?lang=es&in_id_area={area_id}"
+# ─────────────────────────────────────────────────────────────
+# CONFIGURACION - SQL Server Docker en CachyOS
+# ─────────────────────────────────────────────────────────────
+SERVIDOR = "localhost"
+PUERTO = "1433"
+USUARIO = "sa"
+PASSWORD = "Tachyon7188346"
+DB_BRONZE = "LogisticaUltimaMilla"
+DB_GOLD = "LogisticaUltimaMilla"
+CEPAL_CSV = "silver_cepalstat.csv"  # Archivo con datos CEPALSTAT de Bolivia
 
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Levanta una excepción para códigos de estado HTTP erróneos
-        data = response.json()
-        records = data["body"]["data"]
 
-        # Filtrar por sector Energía (dim_63371 = 63374)
-        filtered_records = [r for r in records if r.get("dim_63371") == sector_id]
+def get_engine(database: str):
+    return create_engine(
+        f"mssql+pymssql://sa:Tachyon7188346@localhost:1433/{database}",
+    )
 
-        # Mapeo manual de años basado en nuestra investigación previa
-        year_mapping = {
-            29183: "2013", 29184: "2014", 29185: "2015", 29186: "2016",
-            29187: "2017", 29188: "2018", 29189: "2019", 29190: "2020",
-            29191: "2021", 29192: "2022"
-        }
 
-        df_cepal = pd.DataFrame(filtered_records)
-        df_cepal["Anio"] = df_cepal["dim_29117"].map(year_mapping)
-        df_cepal = df_cepal[["Anio", "value"]].dropna()
-        df_cepal.columns = ["Anio", "Emisiones_MtCO2e"]
-        df_cepal["Emisiones_MtCO2e"] = pd.to_numeric(df_cepal["Emisiones_MtCO2e"])
+# Uso
+engine_bronze = get_engine(DB_BRONZE)
+engine_gold = get_engine(DB_GOLD)
 
-        print("Datos extraídos de CEPALSTAT (Bolivia - Sector Energía):")
-        print(df_cepal.sort_values("Anio").tail())
-        return df_cepal
-    except requests.exceptions.RequestException as e:
-        print(f"Error de red o HTTP al extraer de CEPALSTAT: {e}")
-        return None
-    except json.JSONDecodeError as e:
-        print(f"Error al decodificar JSON de CEPALSTAT: {e}")
-        return None
-    except Exception as e:
-        print(f"Error inesperado en extracción CEPALSTAT: {e}")
-        return None
 
-def clean_and_transform_data(df_entregas):
-    print("\n--- Limpiando y transformando datos de Entregas_Bronze ---")
-    if df_entregas is None:
-        print("DataFrame de entregas es None, no se puede limpiar.")
-        return None
+print("=" * 60)
+print("  CAPA SILVER - Logistica Ultima Milla Bolivia")
+print("=" * 60)
 
-    print("[INFO] Inicio de limpieza")
-    print(f"[INFO] Registros de entrada: {len(df_entregas)}")
-    print(f"[INFO] Columnas disponibles: {list(df_entregas.columns)}")
+engine_bronze = get_engine(DB_BRONZE)
+print(f"[OK] Conexion establecida a Bronze: {DB_BRONZE}")
 
-    total_detectados = 0
-    total_arreglados = 0
-    total_pendientes = 0
+# ─────────────────────────────────────────────────────────────
+# PASO 1: EXTRACCION desde Capa Bronze
+# ─────────────────────────────────────────────────────────────
+print("\n[1/5] Extrayendo datos de Capa Bronze...")
 
-    # 1. Tratamiento de Nulos en Tiempo_Idling_Minutos
-    # Rellenar con 0 o la media, dependiendo de la lógica de negocio. Aquí usaremos 0.
-    print("\n[ETAPA 1/4] Tratamiento de nulos en Tiempo_Idling_Minutos")
-    nulos_idling_antes = df_entregas["Tiempo_Idling_Minutos"].isnull().sum()
-    print(f"[ANTES] Nulos en Tiempo_Idling_Minutos: {nulos_idling_antes}")
-    df_entregas["Tiempo_Idling_Minutos"] = df_entregas["Tiempo_Idling_Minutos"].fillna(0).astype(int)
-    nulos_idling_despues = df_entregas["Tiempo_Idling_Minutos"].isnull().sum()
-    arreglados_idling = nulos_idling_antes - nulos_idling_despues
-    pendientes_idling = nulos_idling_despues
-    total_detectados += nulos_idling_antes
-    total_arreglados += arreglados_idling
-    total_pendientes += pendientes_idling
-    print(f"[DESPUES] Nulos en Tiempo_Idling_Minutos: {nulos_idling_despues}")
-    print(f"[METRICA] Detectados: {nulos_idling_antes} | Arreglados: {arreglados_idling} | Pendientes: {pendientes_idling}")
+SQL_BRONZE = """
+SELECT
+    e.EntregaID,
+    e.FechaEntrega,
+    e.HoraSalida,
+    e.HoraLlegada,
+    e.DistanciaKM,
+    e.ConsumoCombLitros,
+    e.PesoCargaKG,
+    e.TiempoIdlingMin,
+    e.EstadoEntrega,
+    e.ObservacionRaw,
+    -- Vehiculo
+    v.Placa,
+    v.Tipo              AS TipoVehiculo,
+    v.Modelo            AS ModeloVehiculo,
+    v.CapacidadMaxKG,
+    v.FactorEmisionKgCO2PorLitro,
+    -- Conductor
+    c.Nombre            AS NombreConductor,
+    c.LicenciaCateg,
+    -- Cliente
+    cl.NombreEmpresa    AS NombreCliente,
+    cl.Segmento         AS SegmentoCliente,
+    -- Origen
+    uo.Ciudad           AS CiudadOrigen,
+    do.Nombre           AS DepartamentoOrigen,
+    do.Region           AS RegionOrigen,
+    -- Destino
+    ud.Ciudad           AS CiudadDestino,
+    dd.Nombre           AS DepartamentoDestino,
+    dd.Region           AS RegionDestino
+FROM Entrega e
+INNER JOIN Vehiculo  v  ON v.VehiculoID  = e.VehiculoID
+INNER JOIN Conductor c  ON c.ConductorID = e.ConductorID
+INNER JOIN Cliente   cl ON cl.ClienteID  = e.ClienteID
+INNER JOIN Ubicacion uo ON uo.UbicacionID = e.UbicacionOrigenID
+INNER JOIN Ubicacion ud ON ud.UbicacionID = e.UbicacionDestinoID
+INNER JOIN Departamento do ON do.DepartamentoID = uo.DepartamentoID
+INNER JOIN Departamento dd ON dd.DepartamentoID = ud.DepartamentoID;
+"""
 
-    # 2. Normalización de Estado_Entrega
-    # Eliminar espacios extra, convertir a minúsculas y luego a formato título.
-    print("\n[ETAPA 2/4] Normalización de Estado_Entrega")
-    nulos_estado_antes = df_entregas["Estado_Entrega"].isnull().sum()
-    print(f"[ANTES] Nulos en Estado_Entrega: {nulos_estado_antes}")
-    print(f"[ANTES] Valores únicos en Estado_Entrega: {df_entregas['Estado_Entrega'].dropna().unique()}")
-    df_entregas["Estado_Entrega"] = df_entregas["Estado_Entrega"].str.strip().str.lower().str.title()
-    
-    # Estandarizar valores si hay variaciones (ej. 'Cancelado' vs 'Anulado')
-    # Para este ejemplo, asumimos que 'Cancelado' y 'En Proceso' son los principales
-    df_entregas["Estado_Entrega"] = df_entregas["Estado_Entrega"].replace({
-        "Cancelado": "Cancelado",
-        "En proceso": "En Proceso",
-        "Entregado": "Entregado"
-    })
-    # Manejar posibles nulos introducidos por el replace si el valor original era None
-    df_entregas["Estado_Entrega"] = df_entregas["Estado_Entrega"].fillna("Desconocido")
-    nulos_estado_despues = df_entregas["Estado_Entrega"].isnull().sum()
-    arreglados_estado = nulos_estado_antes - nulos_estado_despues
-    pendientes_estado = nulos_estado_despues
-    total_detectados += nulos_estado_antes
-    total_arreglados += arreglados_estado
-    total_pendientes += pendientes_estado
-    print(f"[DESPUES] Nulos en Estado_Entrega: {nulos_estado_despues}")
-    print(f"[METRICA] Detectados: {nulos_estado_antes} | Arreglados: {arreglados_estado} | Pendientes: {pendientes_estado}")
-    print(f"Valores únicos en Estado_Entrega después de limpieza: {df_entregas['Estado_Entrega'].unique()}")
+df_raw = pd.read_sql(SQL_BRONZE, engine_bronze)
+print(f"    Filas extraidas  : {len(df_raw):,}")
+print(f"    Columnas         : {len(df_raw.columns)}")
 
-    # 3. Conversión de tipos de datos si es necesario (ej. Fecha_Hora a datetime)
-    print("\n[ETAPA 3/4] Conversión de Fecha_Hora a datetime")
-    nulos_fecha_antes = df_entregas["Fecha_Hora"].isnull().sum()
-    total_detectados += nulos_fecha_antes
-    print(f"[ANTES] Tipo de Fecha_Hora: {df_entregas['Fecha_Hora'].dtype}")
-    print(f"[ANTES] Nulos en Fecha_Hora: {nulos_fecha_antes}")
-    df_entregas["Fecha_Hora"] = pd.to_datetime(df_entregas["Fecha_Hora"])
-    nulos_fecha_despues = df_entregas["Fecha_Hora"].isnull().sum()
-    arreglados_fecha = nulos_fecha_antes - nulos_fecha_despues
-    pendientes_fecha = nulos_fecha_despues
-    total_arreglados += arreglados_fecha
-    total_pendientes += pendientes_fecha
-    print(f"[DESPUES] Tipo de Fecha_Hora: {df_entregas['Fecha_Hora'].dtype}")
-    print(f"[DESPUES] Nulos en Fecha_Hora: {nulos_fecha_despues}")
-    print(f"[METRICA] Detectados: {nulos_fecha_antes} | Arreglados: {arreglados_fecha} | Pendientes: {pendientes_fecha}")
+# ─────────────────────────────────────────────────────────────
+# PASO 2: DIAGNOSTICO DE SUCIEDAD (Antes de limpiar)
+# ─────────────────────────────────────────────────────────────
+print("\n[2/5] Diagnostico de suciedad (estado ANTES):")
 
-    # 4. Validaciones de Calidad de Datos (Asserts)
-    # Asegurar que no haya nulos en columnas críticas después de la limpieza
-    print("\n[ETAPA 4/4] Validaciones de calidad")
-    print(f"[CHECK] Nulos en ID_Entrega: {df_entregas['ID_Entrega'].isnull().sum()}")
-    print(f"[CHECK] Nulos en Fecha_Hora: {df_entregas['Fecha_Hora'].isnull().sum()}")
-    print(f"[CHECK] Nulos en Estado_Entrega: {df_entregas['Estado_Entrega'].isnull().sum()}")
-    emisiones_negativas = (df_entregas["Emisiones_CO2_KG"] < 0).sum()
-    total_detectados += emisiones_negativas
-    total_pendientes += emisiones_negativas
-    print(f"[CHECK] Emisiones_CO2_KG negativas: {emisiones_negativas}")
-    assert df_entregas["ID_Entrega"].isnull().sum() == 0, "Error: ID_Entrega contiene valores nulos."
-    assert df_entregas["Fecha_Hora"].isnull().sum() == 0, "Error: Fecha_Hora contiene valores nulos."
-    assert df_entregas["Estado_Entrega"].isnull().sum() == 0, "Error: Estado_Entrega contiene valores nulos."
-    assert (df_entregas["Emisiones_CO2_KG"] >= 0).all(), "Error: Emisiones_CO2_KG contiene valores negativos."
+nulos_antes = df_raw.isnull().sum()
+nulos_antes = nulos_antes[nulos_antes > 0]
+print(f"\n    Columnas con nulos:\n{nulos_antes.to_string()}")
 
-    print("\n[OK] Todas las validaciones pasaron correctamente")
-    print("Limpieza y transformación completadas exitosamente.")
-    print("Datos limpios de Entregas (Muestra):")
-    print(df_entregas.head())
-    print(f"[RESUMEN] Registros finales: {len(df_entregas)}")
-    print(f"[RESUMEN CALIDAD] Problemas detectados: {total_detectados}")
-    print(f"[RESUMEN CALIDAD] Problemas arreglados: {total_arreglados}")
-    print(f"[RESUMEN CALIDAD] Problemas pendientes: {total_pendientes}")
-    return df_entregas
+# Detectar nombres con espacios extras
+nombres_sucios = (
+    df_raw["NombreConductor"].str.contains(r"\s{2,}|^\s|\s$", regex=True).sum()
+)
+print(f"\n    Conductores con espacios extras en nombre : {nombres_sucios}")
+clientes_sucios = (
+    df_raw["NombreCliente"].str.contains(r"\s{2,}|^\s|\s$", regex=True).sum()
+)
+print(f"    Clientes con espacios extras en nombre   : {clientes_sucios}")
 
-if __name__ == "__main__":
-    # Configuración de conexión a SQL Server
-    SERVER_NAME = "LAPTOP-0FE1UK8O"
-    DATABASE_NAME = "LogisticaUltimaMilla"
-    TABLE_NAME = "Entregas_Bronze"
+print(f"\n    Info del DataFrame raw:")
+df_raw.info(verbose=False, memory_usage="deep")
 
-    # Extracción de SQL Server
-    df_entregas_bronze = extract_from_sql_server(SERVER_NAME, DATABASE_NAME, TABLE_NAME)
+# ─────────────────────────────────────────────────────────────
+# PASO 3: LIMPIEZA Y NORMALIZACION (Scrubbing)
+# ─────────────────────────────────────────────────────────────
+print("\n[3/5] Ejecutando limpieza y normalizacion...")
 
-    # Extracción de CEPALSTAT
-    df_cepalstat_bronze = extract_from_cepalstat()
+df = df_raw.copy()
 
-    # Limpieza y Transformación (Capa Silver)
-    df_entregas_silver = clean_and_transform_data(df_entregas_bronze)
+# -- 3a. Tipos de datos basicos --
+df["FechaEntrega"] = pd.to_datetime(df["FechaEntrega"])
+df["Anio"] = df["FechaEntrega"].dt.year
+df["Mes"] = df["FechaEntrega"].dt.month
+df["NombreMes"] = df["FechaEntrega"].dt.strftime("%B")
+df["DiaSemana"] = df["FechaEntrega"].dt.day_name()
 
-    # Guardar datos limpios para la Capa Silver
-    if df_entregas_silver is not None:
-        df_entregas_silver.to_csv("silver_entregas.csv", index=False)
-        print("\nDatos de entregas limpios guardados en 'silver_entregas.csv'")
-    
-    if df_cepalstat_bronze is not None:
-        df_cepalstat_bronze.to_csv("silver_cepalstat.csv", index=False)
-        print("Datos de CEPALSTAT guardados en 'silver_cepalstat.csv'")
+# -- 3b. Normalizar texto: STRIP + eliminar espacios dobles + Title Case --
+cols_texto = [
+    "NombreConductor",
+    "NombreCliente",
+    "CiudadOrigen",
+    "CiudadDestino",
+    "DepartamentoOrigen",
+    "DepartamentoDestino",
+    "TipoVehiculo",
+    "ModeloVehiculo",
+    "SegmentoCliente",
+    "EstadoEntrega",
+]
 
-    print("\nCapa Silver completada: Archivos 'silver_entregas.csv' y 'silver_cepalstat.csv' generados.")
+for col in cols_texto:
+    df[col] = (
+        df[col]
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)  # colapsa espacios dobles
+        .str.title()
+    )  # Title Case consistente
+
+# Estado de entrega: valores canonicos exactos
+df["EstadoEntrega"] = df["EstadoEntrega"].str.replace("_", " ", regex=False)
+
+# Observacion: limpiar texto libre
+df["ObservacionRaw"] = (
+    df["ObservacionRaw"]
+    .fillna("Sin Observacion")
+    .str.strip()
+    .str.replace(r"\s+", " ", regex=True)
+    .str.capitalize()
+)
+
+# -- 3c. Imputacion de nulos numericos con estrategia documentada --
+
+# DistanciaKM: imputar con MEDIANA por par Origen-Destino (mas robusta que media)
+mediana_dist = df.groupby(["CiudadOrigen", "CiudadDestino"])["DistanciaKM"].transform(
+    "median"
+)
+df["DistanciaKM"] = df["DistanciaKM"].fillna(mediana_dist)
+# Si sigue nulo (par sin historial), usar mediana global
+df["DistanciaKM"] = df["DistanciaKM"].fillna(df["DistanciaKM"].median())
+
+# ConsumoCombLitros: derivar de DistanciaKM × factor por tipo vehiculo
+# Camiones: ~0.18 L/km | Furgonetas: ~0.10 L/km
+factor_map = {"Camion": 0.180, "Furgoneta": 0.100}
+df["_factor_consumo"] = df["TipoVehiculo"].map(factor_map).fillna(0.150)
+df["ConsumoCombLitros"] = (
+    df["ConsumoCombLitros"].fillna(df["DistanciaKM"] * df["_factor_consumo"]).round(3)
+)
+df.drop(columns=["_factor_consumo"], inplace=True)
+
+# PesoCargaKG: imputar con mediana por tipo de vehiculo (coherente con capacidad)
+mediana_peso = df.groupby("TipoVehiculo")["PesoCargaKG"].transform("median")
+df["PesoCargaKG"] = df["PesoCargaKG"].fillna(mediana_peso).round(2)
+
+# TiempoIdlingMin: imputar con mediana por ciudad de destino
+mediana_idle = df.groupby("CiudadDestino")["TiempoIdlingMin"].transform("median")
+df["TiempoIdlingMin"] = df["TiempoIdlingMin"].fillna(mediana_idle)
+df["TiempoIdlingMin"] = df["TiempoIdlingMin"].fillna(df["TiempoIdlingMin"].median())
+df["TiempoIdlingMin"] = df["TiempoIdlingMin"].astype(int)
+
+# HoraSalida / HoraLlegada: convertir a string HH:MM para portabilidad
+df["HoraSalida"] = df["HoraSalida"].astype(str).replace("None", "No Registrado")
+df["HoraLlegada"] = df["HoraLlegada"].astype(str).replace("None", "No Registrado")
+
+# -- 3d. Calcular columnas derivadas de negocio (KPIs base) --
+
+# Emisiones CO2 (kg): consumo × factor de emision por litro de diesel
+df["EmisionesCO2_KG"] = (
+    df["ConsumoCombLitros"] * df["FactorEmisionKgCO2PorLitro"]
+).round(3)
+
+# Eficiencia: litros por km
+df["EficienciaL_por_KM"] = (df["ConsumoCombLitros"] / df["DistanciaKM"]).round(4)
+
+# Utilizacion de capacidad (%)
+df["UtilizacionCapacidad_Pct"] = (
+    ((df["PesoCargaKG"] / df["CapacidadMaxKG"]) * 100).clip(0, 100).round(2)
+)
+
+# Flag entrega a tiempo (base para OTIF)
+df["EntregadoATiempo"] = (df["EstadoEntrega"] == "Entregado").astype(int)
+
+# Ruta concatenada
+df["Ruta"] = df["CiudadOrigen"] + " -> " + df["CiudadDestino"]
+
+# Tipo de trayecto
+df["TipoTrayecto"] = np.where(
+    df["DepartamentoOrigen"] == df["DepartamentoDestino"],
+    "Intra-departamental",
+    "Inter-departamental",
+)
+
+# ─────────────────────────────────────────────────────────────
+# PASO 4: INTEGRACION CON CEPALSTAT
+# ─────────────────────────────────────────────────────────────
+print("\n[4/5] Integrando con indicadores CEPALSTAT...")
+
+try:
+    df_cepal = pd.read_csv(CEPAL_CSV)
+
+    # Normalizar columnas del CSV de CEPALSTAT
+    df_cepal.columns = df_cepal.columns.str.strip().str.title()
+
+    # Asegurar que existan las columnas requeridas
+    col_anio = [
+        c for c in df_cepal.columns if "anio" in c.lower() or "year" in c.lower()
+    ][0]
+    col_emision = [
+        c
+        for c in df_cepal.columns
+        if "emision" in c.lower() or "co2" in c.lower() or "valor" in c.lower()
+    ][0]
+
+    df_cepal = df_cepal.rename(
+        columns={col_anio: "Anio", col_emision: "EmisionesCEPAL_MtCO2e"}
+    )[["Anio", "EmisionesCEPAL_MtCO2e"]]
+
+    df_cepal["Anio"] = pd.to_numeric(df_cepal["Anio"], errors="coerce")
+    df_cepal["EmisionesCEPAL_MtCO2e"] = pd.to_numeric(
+        df_cepal["EmisionesCEPAL_MtCO2e"], errors="coerce"
+    )
+    df_cepal = df_cepal.dropna().drop_duplicates(subset=["Anio"])
+
+    # Merge con los datos operacionales por anio
+    df_silver = pd.merge(df, df_cepal, on="Anio", how="left")
+
+    anios_sin_cepal = df_silver["EmisionesCEPAL_MtCO2e"].isna().sum()
+    if anios_sin_cepal > 0:
+        print(
+            f"    AVISO: {anios_sin_cepal} registros sin dato CEPAL (anios fuera de rango)"
+        )
+        # Rellenar con la mediana disponible para no perder filas
+        df_silver["EmisionesCEPAL_MtCO2e"] = df_silver["EmisionesCEPAL_MtCO2e"].fillna(
+            df_silver["EmisionesCEPAL_MtCO2e"].median()
+        )
+
+    print(f"    Anios CEPAL disponibles : {sorted(df_cepal['Anio'].unique().tolist())}")
+    print(f"    Filas post-merge        : {len(df_silver):,}")
+
+except FileNotFoundError:
+    print(f"    AVISO: No se encontro '{CEPAL_CSV}'. Continuando sin datos CEPAL.")
+    df_silver = df.copy()
+    df_silver["EmisionesCEPAL_MtCO2e"] = np.nan
+except Exception as ex:
+    print(f"    ERROR al leer CEPALSTAT: {ex}")
+    df_silver = df.copy()
+    df_silver["EmisionesCEPAL_MtCO2e"] = np.nan
+
+# Columnas finales de la Capa Silver (orden limpio para el DW)
+COLUMNAS_SILVER = [
+    "EntregaID",
+    "FechaEntrega",
+    "Anio",
+    "Mes",
+    "NombreMes",
+    "DiaSemana",
+    "HoraSalida",
+    "HoraLlegada",
+    "Placa",
+    "TipoVehiculo",
+    "ModeloVehiculo",
+    "CapacidadMaxKG",
+    "NombreConductor",
+    "LicenciaCateg",
+    "NombreCliente",
+    "SegmentoCliente",
+    "CiudadOrigen",
+    "DepartamentoOrigen",
+    "RegionOrigen",
+    "CiudadDestino",
+    "DepartamentoDestino",
+    "RegionDestino",
+    "Ruta",
+    "TipoTrayecto",
+    "DistanciaKM",
+    "ConsumoCombLitros",
+    "PesoCargaKG",
+    "TiempoIdlingMin",
+    "EficienciaL_por_KM",
+    "UtilizacionCapacidad_Pct",
+    "EmisionesCO2_KG",
+    "EmisionesCEPAL_MtCO2e",
+    "EstadoEntrega",
+    "EntregadoATiempo",
+    "ObservacionRaw",
+]
+df_silver = df_silver[[c for c in COLUMNAS_SILVER if c in df_silver.columns]]
+
+# ─────────────────────────────────────────────────────────────
+# PASO 5: VALIDACION DE CALIDAD (asserts defensivos)
+# ─────────────────────────────────────────────────────────────
+print("\n[5/5] Validando calidad de la Capa Silver...")
+
+COLUMNAS_CRITICAS = [
+    "EntregaID",
+    "FechaEntrega",
+    "Anio",
+    "Mes",
+    "TipoVehiculo",
+    "ModeloVehiculo",
+    "NombreConductor",
+    "NombreCliente",
+    "SegmentoCliente",
+    "CiudadOrigen",
+    "CiudadDestino",
+    "DistanciaKM",
+    "ConsumoCombLitros",
+    "PesoCargaKG",
+    "EmisionesCO2_KG",
+    "EstadoEntrega",
+]
+
+errores = []
+for col in COLUMNAS_CRITICAS:
+    if col in df_silver.columns:
+        n_nulos = df_silver[col].isnull().sum()
+        if n_nulos > 0:
+            errores.append(f"  ERROR: '{col}' tiene {n_nulos} nulos")
+
+if errores:
+    print("\n  FALLO DE VALIDACION:")
+    for e in errores:
+        print(e)
+    raise AssertionError(
+        "La Capa Silver tiene columnas criticas con nulos. Revisar logica."
+    )
+else:
+    print("  [OK] 0 nulos en todas las columnas criticas")
+
+# Validar rangos logicos
+assert df_silver["DistanciaKM"].min() > 0, "ERROR: Distancias <= 0 detectadas"
+assert df_silver["EmisionesCO2_KG"].min() >= 0, "ERROR: Emisiones negativas detectadas"
+assert df_silver["UtilizacionCapacidad_Pct"].between(0, 100).all(), (
+    "ERROR: Utilizacion fuera del rango 0-100%"
+)
+assert df_silver["EntregaID"].is_unique, "ERROR: EntregaID duplicados"
+
+print("  [OK] Rangos logicos correctos")
+print("  [OK] EntregaID es unico (sin duplicados)")
+
+# Resumen post-limpieza
+print(f"\n  Filas finales en Silver : {len(df_silver):,}")
+print(f"  Columnas exportadas     : {len(df_silver.columns)}")
+print(f"\n  Nulos por columna (debe ser 0 en criticas):")
+print(df_silver[COLUMNAS_CRITICAS].isnull().sum().to_string())
+
+# Exportar CSV Silver para respaldo y para el dashboard
+df_silver.to_csv("silver_entregas.csv", index=False, encoding="utf-8-sig")
+print(f"\n  [OK] silver_entregas.csv exportado ({len(df_silver):,} filas)")
+
+# ─────────────────────────────────────────────────────────────
+# CARGA AL DATA WAREHOUSE (tabla Silver en SQL Server)
+# ─────────────────────────────────────────────────────────────
+print("\n  Cargando Silver al Data Warehouse...")
+
+engine_dw = get_engine(DB_GOLD)
+
+df_silver.to_sql(
+    name="Silver_Entregas",
+    con=engine_dw,
+    if_exists="replace",
+    index=False,
+    chunksize=500,  # lotes de 500 para no saturar el buffer
+)
+
+print(f"  [OK] Tabla 'Silver_Entregas' cargada en {DB_GOLD}")
+
+# ─────────────────────────────────────────────────────────────
+# INTERPRETACION ESTRATEGICA (ODS 9 y 11)
+# ─────────────────────────────────────────────────────────────
+print("\n" + "=" * 60)
+print("  INTERPRETACION ESTRATEGICA - ODS 9 y 11")
+print("=" * 60)
+
+otif = df_silver["EntregadoATiempo"].mean() * 100
+co2_total = df_silver["EmisionesCO2_KG"].sum() / 1000  # en toneladas
+util_prom = df_silver["UtilizacionCapacidad_Pct"].mean()
+km_total = df_silver["DistanciaKM"].sum()
+
+print(f"\n  OTIF (entregas a tiempo)     : {otif:.1f}%")
+print(f"  CO2 total operacion          : {co2_total:,.2f} toneladas")
+print(f"  Utilizacion promedio flota   : {util_prom:.1f}%")
+print(f"  Kilometros totales recorridos: {km_total:,.0f} km")
+print(f"""
+  Conclusion estrategica:
+  Con una utilizacion promedio de {util_prom:.0f}%, existe una brecha significativa
+  en el uso de la capacidad de carga. Cada viaje con carga incompleta genera
+  emisiones de CO2 evitables. Al alinear las rutas y consolidar envios
+  (ODS 9 - Infraestructura), se podria reducir hasta un 20-30% las emisiones
+  totales del sector (ODS 11 - Ciudades Sostenibles), sin necesidad de
+  incrementar la flota.
+""")
+
+print("=" * 60)
+print("  Capa Silver completada exitosamente.")
+print("  Siguiente paso: ejecutar database_estrella.sql en SSMS")
+print("  Luego ejecutar: capagold.sql")
+print("=" * 60)
